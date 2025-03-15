@@ -1,4 +1,5 @@
 import os
+import time
 from flask import Flask, request, jsonify, render_template
 import requests
 from dotenv import load_dotenv
@@ -12,11 +13,14 @@ app = Flask(__name__)
 API_KEY = os.getenv("API_KEY")
 BASE_URL = "https://v6.exchangerate-api.com/v6/"
 
-# Store currency names globally to reduce API calls
+# Global storage for currency data
 CURRENCIES = {}
+EXCHANGE_RATES_CACHE = {}
+CACHE_TIMESTAMP = 0
+CACHE_EXPIRY = 600  # Cache expiration time in seconds (10 minutes)
 
 def load_currencies():
-    """Fetch available currencies and store them in a global dictionary."""
+    """Fetch available currencies and store them globally."""
     global CURRENCIES
     url = f"{BASE_URL}{API_KEY}/codes"
     response = requests.get(url)
@@ -37,14 +41,16 @@ def home():
 
 @app.route("/currencies", methods=["GET"])
 def get_currencies():
-    """Return available currencies with country names."""
+    """Return available currencies."""
     if not CURRENCIES:
         return jsonify({"error": "Failed to load currencies"}), 500
     return jsonify({"currencies": CURRENCIES})
 
 @app.route("/convert", methods=["GET"])
 def convert_currency():
-    """Convert currency based on user input."""
+    """Convert currency using cached exchange rates."""
+    global EXCHANGE_RATES_CACHE, CACHE_TIMESTAMP
+
     from_currency = request.args.get("from")
     to_currency = request.args.get("to")
     amount = request.args.get("amount", type=float, default=1)
@@ -53,24 +59,32 @@ def convert_currency():
     if not from_currency or not to_currency or from_currency not in CURRENCIES or to_currency not in CURRENCIES:
         return jsonify({"error": "Invalid or unsupported currency"}), 400
 
-    # Fetch latest exchange rates
-    url = f"{BASE_URL}{API_KEY}/latest/{from_currency}"
-    response = requests.get(url)
-    data = response.json()
+    current_time = time.time()
+    
+    # Check if cached data is still valid
+    if from_currency in EXCHANGE_RATES_CACHE and (current_time - CACHE_TIMESTAMP) < CACHE_EXPIRY:
+        exchange_rate = EXCHANGE_RATES_CACHE[from_currency].get(to_currency)
+    else:
+        # Fetch latest exchange rates and update cache
+        url = f"{BASE_URL}{API_KEY}/latest/{from_currency}"
+        response = requests.get(url)
+        data = response.json()
 
-    if response.status_code != 200 or "conversion_rates" not in data:
-        return jsonify({"error": "Failed to fetch exchange rates"}), 500
+        if response.status_code != 200 or "conversion_rates" not in data:
+            return jsonify({"error": "Failed to fetch exchange rates"}), 500
 
-    # Convert currency
-    rate = data["conversion_rates"].get(to_currency)
-    if not rate:
+        EXCHANGE_RATES_CACHE[from_currency] = data["conversion_rates"]
+        CACHE_TIMESTAMP = current_time
+        exchange_rate = data["conversion_rates"].get(to_currency)
+
+    if not exchange_rate:
         return jsonify({"error": "Conversion rate not found"}), 400
 
-    converted_amount = round(amount * rate, 2)
+    converted_amount = round(amount * exchange_rate, 2)
 
     return jsonify({
         "converted_amount": converted_amount,
-        "exchange_rate": rate,
+        "exchange_rate": exchange_rate,
         "from_currency": from_currency,
         "to_currency": to_currency
     })
