@@ -1,18 +1,35 @@
+import os
 from flask import Flask, request, jsonify, render_template
 import requests
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__)
 
-# Replace with your actual API key
-API_KEY = "1c3baa16d853be0c965ae0aa"
+# Get API Key securely from .env
+API_KEY = os.getenv("API_KEY")
 BASE_URL = "https://v6.exchangerate-api.com/v6/"
 
-# Route to serve the webpage
 @app.route("/")
 def home():
     return render_template("index.html")
 
-# API route to get exchange rates
+# API to fetch available currencies
+@app.route("/currencies", methods=["GET"])
+def get_currencies():
+    url = f"{BASE_URL}{API_KEY}/codes"
+    response = requests.get(url)
+    data = response.json()
+
+    if response.status_code != 200:
+        return jsonify({"error": "Failed to load currencies"}), 500
+
+    currencies = {code: name for code, name in data["supported_codes"]}
+    return jsonify({"currencies": currencies})
+
+# API to convert currency
 @app.route("/convert", methods=["GET"])
 def convert_currency():
     from_currency = request.args.get("from")
