@@ -1,36 +1,59 @@
-from flask import Flask, request, jsonify, render_template
 import os
+from flask import Flask, request, jsonify, render_template
 import requests
 from dotenv import load_dotenv
 
+# Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
 
+# Secure API Key
 API_KEY = os.getenv("API_KEY")
 BASE_URL = "https://v6.exchangerate-api.com/v6/"
 
-@app.route("/")  # This serves the webpage
+# Store currency names globally to reduce API calls
+CURRENCIES = {}
+
+def load_currencies():
+    """Fetch available currencies and store them in a global dictionary."""
+    global CURRENCIES
+    url = f"{BASE_URL}{API_KEY}/codes"
+    response = requests.get(url)
+    data = response.json()
+
+    if response.status_code == 200 and "supported_codes" in data:
+        CURRENCIES = {code: name for code, name in data["supported_codes"]}
+    else:
+        CURRENCIES = {}
+
+# Load currencies when the server starts
+load_currencies()
+
+@app.route("/")
 def home():
+    """Render the main HTML page."""
     return render_template("index.html")
 
 @app.route("/currencies", methods=["GET"])
 def get_currencies():
-    response = requests.get(f"{BASE_URL}{API_KEY}/codes")
-    data = response.json()
-    if response.status_code != 200:
+    """Return available currencies with country names."""
+    if not CURRENCIES:
         return jsonify({"error": "Failed to load currencies"}), 500
-    return jsonify({"currencies": {code: name for code, name in data["supported_codes"]}})
+    return jsonify({"currencies": CURRENCIES})
 
 @app.route("/convert", methods=["GET"])
 def convert_currency():
+    """Convert currency based on user input."""
     from_currency = request.args.get("from")
     to_currency = request.args.get("to")
     amount = request.args.get("amount", type=float, default=1)
 
-    if not from_currency or not to_currency:
-        return jsonify({"error": "Please provide valid currencies"}), 400
+    # Validate inputs
+    if not from_currency or not to_currency or from_currency not in CURRENCIES or to_currency not in CURRENCIES:
+        return jsonify({"error": "Invalid or unsupported currency"}), 400
 
+    # Fetch latest exchange rates
     url = f"{BASE_URL}{API_KEY}/latest/{from_currency}"
     response = requests.get(url)
     data = response.json()
@@ -38,12 +61,19 @@ def convert_currency():
     if response.status_code != 200 or "conversion_rates" not in data:
         return jsonify({"error": "Failed to fetch exchange rates"}), 500
 
+    # Convert currency
     rate = data["conversion_rates"].get(to_currency)
-    if rate is None:
-        return jsonify({"error": "Invalid conversion rate"}), 400
+    if not rate:
+        return jsonify({"error": "Conversion rate not found"}), 400
 
     converted_amount = round(amount * rate, 2)
-    return jsonify({"converted_amount": converted_amount, "exchange_rate": rate})
+
+    return jsonify({
+        "converted_amount": converted_amount,
+        "exchange_rate": rate,
+        "from_currency": from_currency,
+        "to_currency": to_currency
+    })
 
 if __name__ == "__main__":
     app.run(debug=True)
