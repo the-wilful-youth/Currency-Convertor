@@ -5,6 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Real-Time Currency Converter</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Custom Animations */
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .fade-in {
+        animation: fadeIn 0.5s ease-in-out;
+      }
+
+      @keyframes spinSwap {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+      .swap-animation {
+        animation: spinSwap 0.4s ease-in-out;
+      }
+    </style>
   </head>
   <body
     class="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center min-h-screen px-4"
@@ -12,7 +40,9 @@
     <div
       class="bg-white p-6 md:p-8 rounded-2xl shadow-2xl w-full max-w-lg text-center border-4 border-blue-300"
     >
-      <h2 class="text-3xl md:text-4xl font-extrabold text-gray-900 mb-6">
+      <h2
+        class="text-3xl md:text-4xl font-extrabold text-gray-900 mb-6 fade-in"
+      >
         Currency Converter
       </h2>
 
@@ -27,7 +57,7 @@
           type="number"
           id="amount"
           aria-label="Enter amount to convert"
-          class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-lg text-gray-800"
+          class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-lg text-gray-800 transition-all duration-300 ease-in-out transform focus:scale-105 hover:shadow-lg"
           placeholder="Enter amount"
         />
       </div>
@@ -43,7 +73,7 @@
           <select
             id="from_currency"
             aria-label="Select currency to convert from"
-            class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-lg text-gray-800"
+            class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-lg text-gray-800 transition-all duration-300 ease-in-out transform focus:scale-105 hover:shadow-lg"
           ></select>
         </div>
         <div>
@@ -55,7 +85,7 @@
           <select
             id="to_currency"
             aria-label="Select currency to convert to"
-            class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-lg text-gray-800"
+            class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-lg text-gray-800 transition-all duration-300 ease-in-out transform focus:scale-105 hover:shadow-lg"
           ></select>
         </div>
       </div>
@@ -66,7 +96,8 @@
           onclick="swapCurrencies()"
           aria-label="Swap currencies"
           tabindex="0"
-          class="bg-gray-200 p-3 rounded-full shadow-md hover:bg-gray-300 focus:ring-2 focus:ring-gray-500 transition text-2xl"
+          class="bg-gray-200 p-3 rounded-full shadow-md hover:bg-gray-300 focus:ring-2 focus:ring-gray-500 transition-all duration-300 ease-in-out transform hover:scale-110"
+          id="swapBtn"
         >
           🔄
         </button>
@@ -74,7 +105,7 @@
           onclick="convert()"
           aria-label="Convert currency"
           tabindex="0"
-          class="flex-1 mx-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-3 rounded-xl text-xl font-bold shadow-lg hover:opacity-90 focus:ring-2 focus:ring-blue-400 transition"
+          class="flex-1 mx-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-3 rounded-xl text-xl font-bold shadow-lg hover:opacity-90 focus:ring-2 focus:ring-blue-400 transition-all duration-300 ease-in-out transform hover:scale-105"
         >
           Convert
         </button>
@@ -84,11 +115,14 @@
       <h3
         id="result"
         role="status"
-        class="text-2xl font-bold text-gray-900 mt-6 p-4 bg-gray-100 rounded-xl shadow-md"
+        class="text-2xl font-bold text-gray-900 mt-6 p-4 bg-gray-100 rounded-xl shadow-md opacity-0 transition-all duration-500 ease-in-out"
       >
         Converted Amount:
       </h3>
-      <p id="conversion_rate" class="text-lg text-gray-600 mt-2"></p>
+      <p
+        id="conversion_rate"
+        class="text-lg text-gray-600 mt-2 opacity-0 transition-all duration-500 ease-in-out"
+      ></p>
       <p id="last_updated" class="text-sm text-gray-500 mt-2"></p>
     </div>
 
@@ -146,7 +180,10 @@
             "conversion_rate"
           ).innerText = `Exchange Rate: 1 ${fromCurrency} = ${data.exchange_rate} ${toCurrency}`;
 
-          // Update last refresh time
+          // Show result with fade-in effect
+          document.getElementById("result").style.opacity = "1";
+          document.getElementById("conversion_rate").style.opacity = "1";
+
           lastUpdateTime = Date.now();
           document.getElementById("last_updated").innerText =
             "Rates updated just now";
@@ -160,10 +197,19 @@
       function swapCurrencies() {
         const fromCurrency = document.getElementById("from_currency");
         const toCurrency = document.getElementById("to_currency");
+        const swapBtn = document.getElementById("swapBtn");
+
+        // Add animation
+        swapBtn.classList.add("swap-animation");
+
+        // Swap values
         [fromCurrency.value, toCurrency.value] = [
           toCurrency.value,
           fromCurrency.value,
         ];
+
+        // Remove animation after it completes
+        setTimeout(() => swapBtn.classList.remove("swap-animation"), 400);
       }
 
       function autoUpdateRates() {
