@@ -102,19 +102,8 @@ GET /convert?from=USD&to=INR&amount=100
 
 ---
 
-## 🖼️ UI Preview
-
-_Replace this with a screenshot of your app_  
-![Currency Converter Screenshot](screenshot.png)
-
----
-
 ## 🤝 Contributing
 
 Contributions are welcome! Feel free to submit issues and pull requests.
 
 ---
-
-## 🛠️ Credits
-
-Developed by **Anurag Bhowmick** 🚀
